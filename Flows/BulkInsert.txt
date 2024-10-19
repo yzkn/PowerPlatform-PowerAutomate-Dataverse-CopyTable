@@ -1,0 +1,68 @@
+SchemaNamesを初期化する
+
+{
+  "Source": "@{triggerBody()['text']}",
+  "Dest": "@{triggerBody()['text_1']}",
+  "SourceCol": "@{if(empty(coalesce(triggerBody()?['text_3'], '')), concat(triggerBody()['text'], 's'), triggerBody()['text_3'])}",
+  "DestCol": "@{if(empty(coalesce(triggerBody()?['text_4'], '')), concat(triggerBody()['text_1'], 's'), triggerBody()['text_4'])}"
+}
+
+
+
+LogicalNamesを初期化する
+
+{
+  "Source": "@{toLower(variables('SchemaNames')?['Source'])}",
+  "Dest": "@{toLower(variables('SchemaNames')?['Dest'])}",
+  "SourceCol": "@{toLower(variables('SchemaNames')?['SourceCol'])}",
+  "DestCol": "@{toLower(variables('SchemaNames')?['DestCol'])}"
+}
+
+
+
+SourceRecordsStringを初期化する
+
+json(replace(replace(replace(replace(variables('SourceRecordsValue'), variables('SchemaNames')?['SourceCol'], variables('SchemaNames')?['DestCol']), variables('SchemaNames')?['Source'], variables('SchemaNames')?['Dest']), variables('LogicalNames')?['SourceCol'], variables('LogicalNames')?['DestCol']), variables('LogicalNames')?['Source'], variables('LogicalNames')?['Dest']))
+
+
+
+SourceRecordsArrayを初期化する
+
+json(variables('SourceRecordsString'))
+
+
+
+SourceRecordsArray選択
+
+variables('SourceRecordsArray')
+
+item()?['ya_Address']
+
+
+
+リクエスト本文changesetを作成する
+
+range(0, length(outputs('複製元テーブルの行を一覧にする')?['body/value']))
+
+concat('--changeset_', variables('ChangesetID'), variables('NewLine'), 'Content-Type: application/http', variables('NewLine'), 'Content-Transfer-Encoding:binary', variables('NewLine'), 'Content-ID: ', add(item(), 1), variables('NewLine'), variables('NewLine'), 'POST ', variables('OrganizationURI'), concat('/api/data/v9.2/', toLower(variables('LogicalNames')?['DestCol']), ' HTTP/1.1'), variables('NewLine'), 'Content-Type: application/json;type=entry', variables('NewLine'), variables('NewLine'), string(body('SourceRecordsArray選択')?[item()]))
+
+
+リクエスト本文batchを作成する
+
+--batch_@{variables('BatchID')}
+Content-Type: multipart/mixed;boundary=changeset_@{variables('ChangesetID')}
+
+@{join(body('リクエスト本文changesetを作成する'), concat(variables('NewLine'), variables('NewLine')))}
+
+--changeset_@{variables('ChangesetID')}--
+--batch_@{variables('BatchID')}--
+
+
+
+テーブルを作成する
+
+@{outputs('リクエスト本文batchを作成する')}
+
+
+
+
